@@ -64,7 +64,7 @@ def eliminar_medidor(id_medidor: int, db: Session = Depends(get_db)):
     if not medidor:
         raise HTTPException(status_code=404, detail="Medidor no encontrado")
 
-    db.delete(medidor)  # Esto elimina el registro físicamente
+    db.delete(medidor)
     db.commit()
     return {"message": "Medidor eliminado correctamente"}
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, DECIMAL
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, DECIMAL, UniqueConstraint
 from datetime import datetime
 from app.database import Base
 
@@ -16,3 +16,5 @@ class Boleta(Base):
     total_pagar = Column(DECIMAL(10, 2))
     estado = Column(String(20), default="emitida")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("id_cliente", "anio", "mes", name="uq_cliente_anio_mes"),)
