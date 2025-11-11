@@ -1,4 +1,6 @@
 import os
+
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from fastapi.responses import FileResponse
@@ -97,7 +99,7 @@ def listar_boletas(id_cliente: int | None = None, anio: int | None = None, mes: 
     return query.order_by(Boleta.created_at.desc()).all()
 
 
-# 📄 Generar PDF
+# Generar PDF
 @router.get("/{id_boleta}/pdf")
 def generar_pdf_boleta(id_boleta: int, db: Session = Depends(get_db)):
     boleta = db.query(Boleta).filter(Boleta.id_boleta == id_boleta).first()
@@ -108,38 +110,78 @@ def generar_pdf_boleta(id_boleta: int, db: Session = Depends(get_db)):
     if not cliente:
         raise HTTPException(404, "Cliente asociado no encontrado")
 
-    # 📂 Ruta temporal
+    os.makedirs("pdfs", exist_ok=True)
     filename = f"boleta_{id_boleta}.pdf"
     filepath = os.path.join("pdfs", filename)
-    os.makedirs("pdfs", exist_ok=True)
 
-    # ✏️ Crear PDF
     c = canvas.Canvas(filepath, pagesize=letter)
     width, height = letter
+    margin = 50
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(200, 750, "Boleta de Electricidad")
-
-    c.setFont("Helvetica", 12)
-    c.drawString(50, 710, f"Cliente: {cliente.nombre_razon}")
-    c.drawString(50, 690, f"RUT: {cliente.rut}")
-    c.drawString(50, 670, f"Dirección: {cliente.direccion_facturacion}")
-    c.drawString(50, 650, f"Año: {boleta.anio} - Mes: {boleta.mes}")
-
-    c.line(50, 640, 560, 640)
-
-    c.drawString(50, 620, f"kWh Consumidos: {boleta.kwh_total}")
-    c.drawString(50, 600, f"Tarifa Base: ${boleta.tarifa_base}")
-    c.drawString(50, 580, f"Cargos: ${boleta.cargos}")
-    c.drawString(50, 560, f"IVA: ${boleta.iva}")
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(50, 540, f"TOTAL A PAGAR: ${boleta.total_pagar}")
-
+    # Encabezado con color
+    c.setFillColorRGB(0.2, 0.5, 0.9)
+    c.rect(0, height - 80, width, 80, fill=True, stroke=False)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 20)
+    c.drawString(margin, height - 50, "Boleta de Electricidad")
     c.setFont("Helvetica", 10)
-    c.drawString(50, 500, f"Emitida el: {boleta.created_at.strftime('%d/%m/%Y %H:%M:%S')}")
-    c.drawString(50, 480, f"Estado: {boleta.estado}")
+    c.drawString(margin, height - 65, "Factura electrónica de suministro eléctrico")
 
-    c.showPage()
+    # Título del documento
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(margin, height - 110, f"Boleta de Electricidad N° {boleta.id_boleta}")
+
+    # Datos del cliente
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin, height - 140, "Datos del Cliente:")
+    c.setFont("Helvetica", 11)
+    c.drawString(margin, height - 160, f"Nombre/Razón Social: {cliente.nombre_razon}")
+    c.drawString(margin, height - 175, f"RUT: {cliente.rut}")
+    c.drawString(margin, height - 190, f"Dirección: {cliente.direccion_facturacion}")
+    c.drawString(margin, height - 205, f"Email: {cliente.email_contacto}")
+    c.drawString(margin, height - 220, f"Teléfono: {cliente.telefono}")
+
+    # Datos del período
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin, height - 250, "Periodo de Facturación:")
+    c.setFont("Helvetica", 11)
+    c.drawString(margin, height - 270, f"Año: {boleta.anio}     Mes: {boleta.mes}")
+    c.drawString(margin, height - 285, f"Fecha de emisión: {boleta.created_at.strftime('%d/%m/%Y %H:%M:%S')}")
+
+    # Detalle de consumo
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin, height - 320, "Detalle de Consumo:")
+    c.setFont("Helvetica", 11)
+    c.drawString(margin, height - 340, f"Consumo total: {boleta.kwh_total} kWh")
+    c.drawString(margin, height - 355, f"Tarifa base: ${boleta.tarifa_base} por kWh")
+    c.drawString(margin, height - 370, f"Cargos adicionales: ${boleta.cargos}")
+
+    # Totales
+    y = height - 420
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin, y, "Resumen de Pago:")
+
+    c.setFont("Helvetica", 11)
+    c.drawString(margin, y - 20, f"Subtotal: ${round(boleta.kwh_total * boleta.tarifa_base + boleta.cargos, 2)}")
+    c.drawString(margin, y - 35, f"IVA (19%): ${boleta.iva}")
+
+    # Total destacado
+    c.setFillColor(colors.lightgrey)
+    c.rect(margin - 5, y - 75, 200, 30, fill=True, stroke=False)
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(margin, y - 65, f"TOTAL A PAGAR: ${boleta.total_pagar}")
+
+    # Estado
+    c.setFont("Helvetica", 10)
+    c.drawString(margin, y - 110, f"Estado: {boleta.estado.upper()}")
+
+    # Footer
+    c.setFont("Helvetica-Oblique", 9)
+    c.setFillColor(colors.grey)
+    c.drawCentredString(width / 2, 40, "Gracias por preferirnos")
+
     c.save()
 
     return FileResponse(filepath, media_type="application/pdf", filename=filename)
