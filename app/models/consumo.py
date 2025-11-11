@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, UniqueConstraint
 from datetime import datetime
 from app.database import Base
+from typing import Optional
+
 
 class LecturaConsumo(Base):
     __tablename__ = "lectura_consumo"
@@ -14,3 +16,5 @@ class LecturaConsumo(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (UniqueConstraint("id_medidor", "anio", "mes", name="uq_medidor_anio_mes"),)
+
+    

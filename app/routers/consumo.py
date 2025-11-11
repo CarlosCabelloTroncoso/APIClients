@@ -4,6 +4,7 @@ from app.database import get_db
 from app.models.consumo import LecturaConsumo
 from app.models.medidor import Medidor
 from app.schemas.consumo import LecturaCreate, LecturaResponse
+from typing import Optional
 
 router = APIRouter(prefix="/api/lecturas", tags=["Lecturas"])
 
@@ -43,13 +44,15 @@ def crear_lectura(data: LecturaCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=list[LecturaResponse])
 def listar_lecturas(
-    id_medidor: int,
-    anio: int | None = None,
-    mes: int | None = None,
-    db: Session = Depends(get_db)
+        id_medidor: Optional[int] = None,
+        anio: Optional[int] = None,
+        mes: Optional[int] = None,
+        db: Session = Depends(get_db)
 ):
-    query = db.query(LecturaConsumo).filter(LecturaConsumo.id_medidor == id_medidor)
+    query = db.query(LecturaConsumo)
 
+    if id_medidor:
+        query = query.filter(LecturaConsumo.id_medidor == id_medidor)
     if anio:
         query = query.filter(LecturaConsumo.anio == anio)
     if mes:
